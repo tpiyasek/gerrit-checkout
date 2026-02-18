@@ -26,7 +26,7 @@ setup(
     ],
     python_requires=">=3.7",
     install_requires=[
-        # Add your dependencies here
+        "rich>=10.0.0",
     ],
     entry_points={
         "console_scripts": [

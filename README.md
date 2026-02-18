@@ -1,62 +1,48 @@
 # gerrit-checkout
 
-CLI tool to fetch and checkout Gerrit changes related to a Topic into your local Git workspace.
+Fetch and checkout Gerrit changes by topic.
 
 ## Installation
 
-### From GitHub (pip)
-
 ```bash
-pip install git+https://github.com/yourusername/gerrit-checkout.git
+pip install git+https://github.com/tpiyasek/gerrit-checkout.git
 ```
 
-### From source
-
-```bash
-git clone https://github.com/yourusername/gerrit-checkout.git
-cd gerrit-checkout
-pip install -e .
-```
+This will automatically install all required dependencies (rich, git, ssh).
 
 ## Usage
 
 ```bash
-gerrit-checkout <topic> [options]
+gerrit-checkout <topic> [--gerrit-server SERVER] [--repo PATH] [-v]
 ```
 
 ### Options
 
-- `--gerrit-url URL`: Gerrit instance URL (default: https://gerrit.example.com)
-- `--repo PATH`: Git repository path (default: current directory)
+- `--gerrit-server`: Gerrit server hostname (default: csp-gerrit-ssh.volvocars.net)
+- `--repo`: Repository path (default: current directory)
 - `-v, --verbose`: Enable verbose output
 
 ### Examples
 
 ```bash
 # Fetch changes for a topic
-gerrit-checkout my-feature --gerrit-url https://gerrit.mycompany.com
+gerrit-checkout ARTCEE-10261
 
-# Use current directory
-gerrit-checkout my-feature --repo .
+# From repo workspace root
+cd /workspace/tpiyasek/MASTER
+gerrit-checkout ARTCEE-10261
 
-# Enable verbose output
-gerrit-checkout my-feature -v
+# From single git repository
+cd /path/to/repo
+gerrit-checkout my-topic
 ```
 
-## Development
-
-### Setup development environment
-
-```bash
-git clone https://github.com/yourusername/gerrit-checkout.git
-cd gerrit-checkout
-pip install -e .
-```
-
-### Requirements
+## Requirements
 
 - Python 3.7+
+- Git
+- SSH access to Gerrit
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details
+MIT
