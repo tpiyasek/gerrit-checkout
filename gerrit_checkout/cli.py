@@ -11,6 +11,8 @@ from typing import Dict, List, Optional, Tuple
 
 import rich.console
 
+from gerrit_checkout.config import load_config, create_default_config
+
 console = rich.console.Console()
 
 GERRIT_SERVER = "csp-gerrit-ssh.volvocars.net"
@@ -28,7 +30,13 @@ def _load_manifest_project_paths(manifest_file: Path) -> Dict[str, str]:
     try:
         tree = ElementTree.parse(manifest_file)
     except ElementTree.ParseError as exc:
-        console.print(f"[red]Error: Failed to parse manifest: {manifest_file} ({exc})[/red]")
+        console.print(f"[red]Error: Failed to parse manifest file[/red]")
+        console.print(f"[red]  Path: {manifest_file}[/red]")
+        console.print(f"[red]  Details: {exc}[/red]")
+        sys.exit(1)
+    except FileNotFoundError:
+        console.print(f"[red]Error: Manifest file not found[/red]")
+        console.print(f"[red]  Expected: {manifest_file}[/red]")
         sys.exit(1)
 
     project_paths: Dict[str, str] = {}
@@ -64,9 +72,17 @@ def _query_gerrit_ssh(topic: str, user: str, gerrit_server: str = GERRIT_SERVER)
         "status:open",
     ]
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        console.print(f"[red]Error: Gerrit query timed out (30s)[/red]")
+        console.print(f"[red]  Check your SSH connection to {gerrit_server}[/red]")
+        sys.exit(1)
     except subprocess.CalledProcessError as exc:
-        console.print(f"[red]Error: Gerrit SSH query failed ({exc})[/red]")
+        console.print(f"[red]Error: Gerrit query failed[/red]")
+        console.print(f"[red]  Server: {gerrit_server}[/red]")
+        console.print(f"[red]  User: {user}[/red]")
+        console.print(f"[red]  Details: {exc.stderr if exc.stderr else exc}[/red]")
+        console.print(f"[yellow]Hint: Check SSH keys and Gerrit server connectivity[/yellow]")
         sys.exit(1)
 
     changes: List[Tuple[str, str, str, str]] = []
@@ -132,7 +148,10 @@ def _checkout_change(
         console.print(f"[green]✓ Successfully checked out change #{change_num}[/green]")
         return True
     except subprocess.CalledProcessError as exc:
-        console.print(f"[red]✗ FAILED for project: {project}[/red]")
+        console.print(f"[red]✗ FAILED to checkout[/red]")
+        console.print(f"[red]  Project: {project}[/red]")
+        console.print(f"[red]  Change: #{change_num}[/red]")
+        console.print(f"[red]  Check network and SSH access to {gerrit_server}[/red]")
         return False
 
 
@@ -150,6 +169,7 @@ def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: str = GERRIT_
     user = os.environ.get("USER", "")
     if not user:
         console.print("[red]Error: USER environment variable is not set[/red]")
+        console.print("[yellow]Hint: Set USER in your shell or use: export USER=yourname[/yellow]")
         sys.exit(1)
 
     # Check if it's a repo tool workspace
@@ -169,7 +189,9 @@ def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: str = GERRIT_
         )
         
         if result.returncode != 0:
-            console.print(f"[red]Error: Not a git repository or repo tool workspace: {work_dir}[/red]")
+            console.print(f"[red]Error: Not a git repository or repo tool workspace[/red]")
+            console.print(f"[red]  Path: {work_dir}[/red]")
+            console.print(f"[yellow]Hint: Run from repo root or single git repository[/yellow]")
             sys.exit(1)
 
     console.print(f"Querying Gerrit for topic: {topic}")
@@ -224,22 +246,32 @@ def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: str = GERRIT_
 
 def main():
     """Main entry point for the CLI."""
+    # Load config
+    config = load_config()
+    
     parser = argparse.ArgumentParser(
-        description="Fetch and checkout Gerrit changes related to a Topic into your local Git workspace"
+        description="Fetch and checkout Gerrit changes related to a Topic",
+        epilog="Config file: ~/.gerrit-checkout.cfg"
     )
     parser.add_argument(
         "topic",
+        nargs="?",
         help="Gerrit topic to fetch changes for"
     )
     parser.add_argument(
         "--gerrit-server",
-        default=GERRIT_SERVER,
-        help=f"Gerrit server hostname (default: {GERRIT_SERVER})"
+        default=config.get("gerrit_server", GERRIT_SERVER),
+        help=f"Gerrit server hostname (default: {config.get('gerrit_server', GERRIT_SERVER)})"
     )
     parser.add_argument(
         "--repo",
-        default=".",
-        help="Git repository path (default: current directory)"
+        default=config.get("repo_path", "."),
+        help=f"Git repository path (default: {config.get('repo_path', '.')})"
+    )
+    parser.add_argument(
+        "--init-config",
+        action="store_true",
+        help="Create default config file at ~/.gerrit-checkout.cfg"
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -249,9 +281,21 @@ def main():
 
     args = parser.parse_args()
 
+    # Handle config initialization
+    if args.init_config:
+        create_default_config()
+        sys.exit(0)
+    
+    # Topic is required when not initializing config
+    if not args.topic:
+        parser.error("topic is required (unless using --init-config)")
+
     try:
         checkout(args.topic, cwd=args.repo, gerrit_server=args.gerrit_server)
         sys.exit(0)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interrupted by user[/yellow]")
+        sys.exit(130)
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         if args.verbose:
