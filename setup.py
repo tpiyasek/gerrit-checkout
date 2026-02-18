@@ -8,7 +8,7 @@ setup(
     version="0.1.0",
     author="Tharindu Piyasekara",
     author_email="tpiyasek@volvocars.com",
-    description="CLI tool to fetch and checkout Gerrit changes related to a Topic into your local Git workspace",
+    description="Fetch and checkout Gerrit changes by topic",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/tpiyasek/gerrit-checkout",
