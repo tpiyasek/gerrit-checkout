@@ -11,11 +11,11 @@ from typing import Dict, List, Optional, Tuple
 
 import rich.console
 
-from gerrit_checkout.config import load_config, create_default_config
+from gerrit_checkout.config import DEFAULT_GERRIT_SERVER, load_config, create_default_config
 
 console = rich.console.Console()
 
-GERRIT_SERVER = "gerrit.neo.volvocars.net"
+GERRIT_SERVER = DEFAULT_GERRIT_SERVER
 
 
 def _load_manifest_project_paths(manifest_file: Path) -> Dict[str, str]:
@@ -280,6 +280,7 @@ def main():
     )
 
     args = parser.parse_args()
+    resolved_gerrit_server = (args.gerrit_server or "").strip() or GERRIT_SERVER
 
     # Handle config initialization
     if args.init_config:
@@ -291,7 +292,7 @@ def main():
         parser.error("topic is required (unless using --init-config)")
 
     try:
-        checkout(args.topic, cwd=args.repo, gerrit_server=args.gerrit_server)
+        checkout(args.topic, cwd=args.repo, gerrit_server=resolved_gerrit_server)
         sys.exit(0)
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
