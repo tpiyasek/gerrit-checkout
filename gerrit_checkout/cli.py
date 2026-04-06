@@ -15,7 +15,7 @@ from gerrit_checkout.config import load_config, create_default_config
 
 console = rich.console.Console()
 
-GERRIT_SERVER = "csp-gerrit-ssh.volvocars.net"
+GERRIT_SERVER = "gerrit.neo.volvocars.net"
 
 
 def _load_manifest_project_paths(manifest_file: Path) -> Dict[str, str]:
