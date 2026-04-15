@@ -5,9 +5,6 @@ from pathlib import Path
 from typing import Dict, Any
 
 
-DEFAULT_GERRIT_SERVER = "gerrit.neo.volvocars.net"
-
-
 def load_config() -> Dict[str, Any]:
     """Load configuration from ~/.gerrit-checkout.cfg.
     
@@ -16,7 +13,7 @@ def load_config() -> Dict[str, Any]:
     """
     config_file = Path.home() / ".gerrit-checkout.cfg"
     config = {
-        "gerrit_server": DEFAULT_GERRIT_SERVER,
+        "gerrit_server": "",
         "repo_path": ".",
     }
     
@@ -30,7 +27,7 @@ def load_config() -> Dict[str, Any]:
         if parser.has_section("gerrit"):
             if parser.has_option("gerrit", "server"):
                 server = parser.get("gerrit", "server").strip().strip("\"'").strip()
-                config["gerrit_server"] = server or DEFAULT_GERRIT_SERVER
+                config["gerrit_server"] = server
             if parser.has_option("gerrit", "repo_path"):
                 repo_path = parser.get("gerrit", "repo_path").strip().strip("\"'").strip()
                 if repo_path:
@@ -51,8 +48,8 @@ def create_default_config() -> None:
         return
     
     default_content = """[gerrit]
-# Gerrit server hostname
-server = gerrit.neo.volvocars.net
+# Gerrit server hostname (replace with your actual Gerrit host)
+server = gerrit.exsample-com
 
 # Default repository path (. for current directory)
 repo_path = .

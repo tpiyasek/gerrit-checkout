@@ -11,11 +11,9 @@ from typing import Dict, List, Optional, Tuple
 
 import rich.console
 
-from gerrit_checkout.config import DEFAULT_GERRIT_SERVER, load_config, create_default_config
+from gerrit_checkout.config import load_config, create_default_config
 
 console = rich.console.Console()
-
-GERRIT_SERVER = DEFAULT_GERRIT_SERVER
 
 
 def _load_manifest_project_paths(manifest_file: Path) -> Dict[str, str]:
@@ -50,7 +48,7 @@ def _load_manifest_project_paths(manifest_file: Path) -> Dict[str, str]:
     return project_paths
 
 
-def _query_gerrit_ssh(topic: str, user: str, gerrit_server: str = GERRIT_SERVER) -> List[Tuple[str, str, str, str]]:
+def _query_gerrit_ssh(topic: str, user: str, gerrit_server: str) -> List[Tuple[str, str, str, str]]:
     """Query Gerrit using SSH for changes with given topic.
     
     Args:
@@ -82,7 +80,17 @@ def _query_gerrit_ssh(topic: str, user: str, gerrit_server: str = GERRIT_SERVER)
         console.print(f"[red]  Server: {gerrit_server}[/red]")
         console.print(f"[red]  User: {user}[/red]")
         console.print(f"[red]  Details: {exc.stderr if exc.stderr else exc}[/red]")
-        console.print(f"[yellow]Hint: Check SSH keys and Gerrit server connectivity[/yellow]")
+        
+        # Check if using default/sample hostname
+        if gerrit_server == "gerrit.exsample-com":
+            console.print(f"\n[yellow]The server hostname is the sample default (gerrit.exsample-com).[/yellow]")
+            console.print(f"[yellow]You need to configure your actual Gerrit server address:[/yellow]")
+            console.print(f"[yellow]  Option 1: Create config file: gerrit-checkout --init-config[/yellow]")
+            console.print(f"[yellow]           Then edit ~/.gerrit-checkout.cfg and set your server[/yellow]")
+            console.print(f"[yellow]  Option 2: Pass server on command line:[/yellow]")
+            console.print(f"[yellow]           gerrit-checkout --gerrit-server gerrit.yourcompany.com TOPIC_NAME[/yellow]")
+        else:
+            console.print(f"[yellow]Hint: Check SSH keys and Gerrit server connectivity[/yellow]")
         sys.exit(1)
 
     changes: List[Tuple[str, str, str, str]] = []
@@ -111,7 +119,7 @@ def _checkout_change(
     project: str, 
     ref: str, 
     user: str, 
-    gerrit_server: str = GERRIT_SERVER
+    gerrit_server: str
 ) -> bool:
     """Checkout a Gerrit change into the repository.
     
@@ -155,7 +163,7 @@ def _checkout_change(
         return False
 
 
-def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: str = GERRIT_SERVER) -> None:
+def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: Optional[str] = None) -> None:
     """Fetch Gerrit topic and checkout patchsets.
 
     Args:
@@ -164,6 +172,12 @@ def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: str = GERRIT_
              If not provided, uses current working directory.
         gerrit_server: Gerrit server hostname
     """
+    resolved_gerrit_server = (gerrit_server or "").strip()
+    if not resolved_gerrit_server:
+        console.print("[red]Error: Gerrit server not configured[/red]")
+        console.print("[yellow]Hint: Set [gerrit].server in ~/.gerrit-checkout.cfg or pass --gerrit-server[/yellow]")
+        sys.exit(1)
+
     work_dir = Path(cwd).expanduser().resolve() if cwd else Path.cwd().resolve()
     
     user = os.environ.get("USER", "")
@@ -195,7 +209,7 @@ def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: str = GERRIT_
             sys.exit(1)
 
     console.print(f"Querying Gerrit for topic: {topic}")
-    changes = _query_gerrit_ssh(topic, user, gerrit_server)
+    changes = _query_gerrit_ssh(topic, user, resolved_gerrit_server)
 
     total_changes = len(changes)
     successful_changes = 0
@@ -232,7 +246,7 @@ def checkout(topic: str, cwd: Optional[str] = None, gerrit_server: str = GERRIT_
             # For single git repo, use the work_dir directly
             repo_dir = work_dir
 
-        if _checkout_change(repo_dir, project, ref, user, gerrit_server):
+        if _checkout_change(repo_dir, project, ref, user, resolved_gerrit_server):
             successful_changes += 1
         else:
             failed_changes += 1
@@ -260,8 +274,8 @@ def main():
     )
     parser.add_argument(
         "--gerrit-server",
-        default=config.get("gerrit_server", GERRIT_SERVER),
-        help=f"Gerrit server hostname (default: {config.get('gerrit_server', GERRIT_SERVER)})"
+        default=config.get("gerrit_server", ""),
+        help="Gerrit server hostname (overrides [gerrit].server from cfg if set)"
     )
     parser.add_argument(
         "--repo",
@@ -280,7 +294,7 @@ def main():
     )
 
     args = parser.parse_args()
-    resolved_gerrit_server = (args.gerrit_server or "").strip() or GERRIT_SERVER
+    resolved_gerrit_server = (args.gerrit_server or "").strip()
 
     # Handle config initialization
     if args.init_config:

@@ -19,10 +19,19 @@ gerrit-checkout <topic> [--gerrit-server SERVER] [--repo PATH] [-v]
 
 ### Options
 
-- `--gerrit-server`: Gerrit server hostname (default: gerrit.neo.volvocars.net)
+- `--gerrit-server`: Gerrit server hostname (overrides config for this run only)
 - `--repo`: Repository path (default: current directory)
 - `--init-config`: Create `~/.gerrit-checkout.cfg` with default values
 - `-v, --verbose`: Enable verbose output
+
+Server value precedence:
+
+1. `--gerrit-server` (CLI override, current run only)
+2. `~/.gerrit-checkout.cfg` -> `[gerrit].server`
+
+If no server is set in either place, the command exits with an error.
+
+Note: `gerrit.exsample-com` in the config template below is a sample only. Update it to your actual Gerrit hostname.
 
 ### Config file
 
@@ -30,9 +39,11 @@ gerrit-checkout <topic> [--gerrit-server SERVER] [--repo PATH] [-v]
 
 ```ini
 [gerrit]
-server = gerrit.neo.volvocars.net
+server = gerrit.exsample-com
 repo_path = .
 ```
+
+After creating the file, set `server` to your Gerrit hostname before running checkout.
 
 If the config file already exists, the command keeps the current file and exits.
 
@@ -41,7 +52,7 @@ If the config file already exists, the command keeps the current file and exits.
 ```bash
 # From repo workspace root
 cd /path/to/repo-workspace
-gerrit-checkout ARTCEE-10261
+gerrit-checkout ARTXXX-12345
 
 # Create default config once (optional)
 gerrit-checkout --init-config
