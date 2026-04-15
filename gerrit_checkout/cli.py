@@ -155,7 +155,7 @@ def _checkout_change(
         subprocess.run(["git", "checkout", "FETCH_HEAD"], cwd=str(repo_dir), check=True, capture_output=True, text=True)
         console.print(f"[green]✓ Successfully checked out change #{change_num}[/green]")
         return True
-    except subprocess.CalledProcessError as exc:
+    except subprocess.CalledProcessError:
         console.print(f"[red]✗ FAILED to checkout[/red]")
         console.print(f"[red]  Project: {project}[/red]")
         console.print(f"[red]  Change: #{change_num}[/red]")
@@ -285,7 +285,7 @@ def main():
     parser.add_argument(
         "--init-config",
         action="store_true",
-        help="Create default config file at ~/.gerrit-checkout.cfg"
+        help="Create ~/.gerrit-checkout.cfg (optionally with --gerrit-server)"
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -298,7 +298,7 @@ def main():
 
     # Handle config initialization
     if args.init_config:
-        create_default_config()
+        create_default_config(server=resolved_gerrit_server)
         sys.exit(0)
     
     # Topic is required when not initializing config

@@ -13,7 +13,7 @@ Python dependency (`rich`) is installed by pip. `git` and `ssh` must be availabl
 ## Usage
 
 ```bash
-gerrit-checkout --init-config
+gerrit-checkout --init-config [--gerrit-server SERVER]
 gerrit-checkout <topic> [--gerrit-server SERVER] [--repo PATH] [-v]
 ```
 
@@ -43,16 +43,16 @@ server = gerrit.exsample-com
 repo_path = .
 ```
 
-After creating the file, set `server` to your Gerrit hostname before running checkout.
+For one-step setup, run `gerrit-checkout --init-config --gerrit-server YOUR_HOST`.
 
-If the config file already exists, the command keeps the current file and exits.
+If the config file already exists, `--init-config` updates it.
 
 ### Examples
 
 ```bash
 # From repo workspace root
 cd /path/to/repo-workspace
-gerrit-checkout ARTXXX-12345
+gerrit-checkout ARTXXX-12345_Story_Topic
 
 # Create default config once (optional)
 gerrit-checkout --init-config

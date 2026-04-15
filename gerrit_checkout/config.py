@@ -5,6 +5,11 @@ from pathlib import Path
 from typing import Dict, Any
 
 
+def _clean_cfg_value(value: str) -> str:
+    """Normalize config values by trimming whitespace and optional quotes."""
+    return value.strip().strip("\"'").strip()
+
+
 def load_config() -> Dict[str, Any]:
     """Load configuration from ~/.gerrit-checkout.cfg.
     
@@ -26,10 +31,9 @@ def load_config() -> Dict[str, Any]:
         
         if parser.has_section("gerrit"):
             if parser.has_option("gerrit", "server"):
-                server = parser.get("gerrit", "server").strip().strip("\"'").strip()
-                config["gerrit_server"] = server
+                config["gerrit_server"] = _clean_cfg_value(parser.get("gerrit", "server"))
             if parser.has_option("gerrit", "repo_path"):
-                repo_path = parser.get("gerrit", "repo_path").strip().strip("\"'").strip()
+                repo_path = _clean_cfg_value(parser.get("gerrit", "repo_path"))
                 if repo_path:
                     config["repo_path"] = repo_path
     
@@ -39,24 +43,35 @@ def load_config() -> Dict[str, Any]:
     return config
 
 
-def create_default_config() -> None:
-    """Create a default config file at ~/.gerrit-checkout.cfg."""
+def create_default_config(server: str = "") -> None:
+    """Create ~/.gerrit-checkout.cfg with optional server override."""
     config_file = Path.home() / ".gerrit-checkout.cfg"
-    
-    if config_file.exists():
-        print(f"Config file already exists: {config_file}")
-        return
-    
-    default_content = """[gerrit]
-# Gerrit server hostname (replace with your actual Gerrit host)
-server = gerrit.exsample-com
+
+    existed_before = config_file.exists()
+    server_input = _clean_cfg_value(server)
+    existing = load_config() if existed_before else {"gerrit_server": "", "repo_path": "."}
+    server_value = server_input or existing.get("gerrit_server", "") or "gerrit.exsample-com"
+    repo_value = existing.get("repo_path", ".") or "."
+
+    default_content = f"""[gerrit]
+# Gerrit server hostname
+server = {server_value}
 
 # Default repository path (. for current directory)
-repo_path = .
+repo_path = {repo_value}
 """
-    
+
     try:
         config_file.write_text(default_content)
-        print(f"Created config file: {config_file}")
+        action = "Updated" if existed_before else "Created"
+        print(f"{action} config file: {config_file}")
+        if server_input:
+            print(f"  Server: {server_value}")
+        elif server_value != "gerrit.exsample-com":
+            print(f"  Server: {server_value}")
+        else:
+            print(f"  Server is set to the sample placeholder '{server_value}'.")
+            print(f"  Edit {config_file} and replace it with your actual Gerrit hostname.")
+            print(f"  Tip: next time run:  gerrit-checkout --init-config --gerrit-server YOUR_HOST")
     except Exception as e:
         print(f"Error: Failed to create config file {config_file}: {e}")
